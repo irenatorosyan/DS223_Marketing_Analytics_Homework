@@ -1,0 +1,150 @@
+---
+title: Marketing Analytics - Homework 1 - Irena Torosyan
+output: pdf_document
+date: "2023-10-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Task 1
+
+The innovation of my choice is “Hugimals”. The short description of the products they produce that can be found on their website states: Lovable weighted stuffed animals for kids & adults that “hug you back” to lower stress, boost calm and help with sleep.
+
+## Task 2
+
+Hugimals and traditional stuffed animals, such as those produced by Hasbro, share a fundamental similarity in that they both aim to provide comfort and emotional support through a cuddly, huggable form. Both products serve as companions that offer a sense of security, especially for children and individuals facing stressful or challenging situations.
+
+While traditional stuffed animals have been around for generations, Hugimals introduce a modern twist by incorporating the concept similar to weighted blankets into their design. This innovation enhances their ability to provide a calming and reassuring experience, akin to the sensation of a gentle hug. In contrast, traditional stuffed animals primarily rely on their soft and plushy texture to offer comfort. However, both Hugimals and traditional stuffed animals cater to the same fundamental human need for tactile comfort and emotional connection, making them similar in their core purpose of providing companionship.
+
+## Task 3
+
+The data provided on Hasbro's net revenue from 2006 to 2022 is valuable for constructing a Bass Diffusion Model analysis. In this context, the data can be used to model and understand the adoption and growth of Hasbro's products over the years. Here's a justification for using this data in a Bass Diffusion Model analysis:
+
+1. Historical Adoption Trends: The dataset spans 17 years, providing a substantial historical record of Hasbro's net revenue. It allows for the identification of patterns, seasonality, and long-term trends in adoption.
+
+2. Forecasting Future Adoption: The Bass Diffusion Model aims to predict the future adoption of a product based on historical data. This is particularly valuable for strategic planning, product launches, and resource allocation.
+
+3. Competitive Analysis: The data also mentions Hasbro's position in the toy industry and its competitors. This information can be used in conjunction with the Bass Diffusion Model to assess how Hasbro's products have fared relative to competitors and how market dynamics, including rivalries and licensing agreements, have influenced adoption rates.
+
+## Reading the data
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(ggpubr)
+library(knitr)
+library(diffusion)
+library(openxlsx)
+library(nls2)
+library(stats)
+```
+
+```{r}
+df <- read.xlsx("statistic_id198710_revenue-of-hasbro-2006-2022.xlsx", sheet = "Data")[-1, ]
+# had to take only some part of the data because the model was giving an error otherwise
+df <- df[1:6, ]
+df
+```
+
+## Plots
+
+```{r}
+ggplot(data = df, aes(x = df[, 1], y = df[, 2])) +
+  geom_bar(stat = 'identity') +
+  xlab("Year") +
+  ylab("Revenue") +
+  ggtitle('Hasbro sales')
+```
+
+```{r}
+bass.f <- function(t,p,q){((p+q)^2/p)*exp(-(p+q)*t)/(1+(q/p)*exp(-(p+q)*t))^2}
+bass.F <- function(t,p,q){ (1-exp(-(p+q)*t))/
+    (1+(q/p)*exp(-(p+q)*t))
+}
+
+time_ad = ggplot(data.frame(t = 1:length(df[, 2])), aes(t)) +
+  stat_function(fun = bass.f, args = c(p=0.002, q=0.4)) +
+  labs(title = 'f(t)')
+  
+sm_sales = ggplot(data = df, aes(x = df[, 1], y = df[, 2])) +
+  geom_bar(stat = 'identity') +
+  xlab("Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Revenue") +
+  ggtitle('Hasbro sales')
+
+ggarrange(time_ad, sm_sales)
+```
+
+## Task 4
+
+```{r}
+sales = df[, 2]
+t = 1:length(sales)
+
+bass_m = nls(
+  sales ~ m * (((p + q)^2/p) * exp(-(p + q) * t)) / (1 + (q/p) * exp(-(p + q) * t))^2,
+  start = c(list(m = sum(sales), p = 0.003, q = 0.4)),
+  algorithm = "port"
+)
+
+
+summary(bass_m)
+```
+
+Estimated value of p = 0.05407
+Estimated value of q = 0.1868
+Estimated value of m = 0.1868
+
+```{r}
+bass.f <- function(t,p,q){((p+q)^2/p)*exp(-(p+q)*t)/(1+(q/p)*exp(-(p+q)*t))^2}
+bass.F <- function(t,p,q){ (1-exp(-(p+q)*t))/
+    (1+(q/p)*exp(-(p+q)*t))
+}
+
+time_ad = ggplot(data.frame(t = 1:length(df[, 2])), aes(t)) +
+  stat_function(fun = bass.f, args = c(p=0.05407, q=0.1868)) +
+  labs(title = 'f(t)')
+  
+sm_sales = ggplot(data = df, aes(x = df[, 1], y = df[, 2])) +
+  geom_bar(stat = 'identity') +
+  xlab("Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylab("Revenue") +
+  ggtitle('Hasbro sales')
+
+ggarrange(time_ad, sm_sales)
+```
+
+## Task 5
+
+```{r}
+diff_m = diffusion(sales)
+p=round(diff_m$w,4)[1]
+q=round(diff_m$w,4)[2]
+m=round(diff_m$w,4)[3]
+diff_m
+```
+
+## Task 6
+
+```{r}
+df$pred_sales = bass.f(1:6, p=p, q=q) * m
+ggplot(data = df, aes(x = df[, 1], y = df[, 2])) +
+  geom_bar(stat = 'identity') +
+  geom_point(mapping = aes(x = df[, 1], y=pred_sales), color = 'red') +
+  xlab("Year") +
+  ylab("Revenue")
+```
+
+## Task 7
+
+Tasks were done for worldwide data
+
+## Resources
+
+Hugimals: https://www.hugimalsworld.com/
+
+Hasbro net revenue from 2006 to 2022: https://www.statista.com/statistics/198710/net-revenues-of-hasbro-since-2006/
